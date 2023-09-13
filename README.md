@@ -21,6 +21,7 @@ pub fn main() {
 
     const help_string = 
         \\version   Prints version
+        \\
     ;
 
     try yacli.parse_subroutines(allocator, help_string, .{

@@ -2,17 +2,14 @@ const std = @import("std");
 const builtin = std.builtin;
 
 pub const String = []const u8;
-pub const Subroutine = *const fn(arg: anytype) anyerror!void;
-pub const SubroutineMap = struct {
-    cmd_names: []const String,
-    subroutines: []const Subroutine
-};
+pub const Subroutine = *const fn (arg: anytype) anyerror!void;
+pub const SubroutineMap = struct { cmd_names: []const String, subroutines: []const Subroutine };
 
-/// Grab the number of lines 
+/// Grab the number of lines
 fn get_line_count(comptime str: []const u8) usize {
-    var count : usize = 0;
-    for(str) |c| {
-        if(c == '\n')
+    var count: usize = 0;
+    for (str) |c| {
+        if (c == '\n')
             count += 1;
     }
 
@@ -22,11 +19,11 @@ fn get_line_count(comptime str: []const u8) usize {
 /// Grab the names of the help string from first word of every line (does not strip)
 fn get_names(comptime str: []const u8) [get_line_count(str)]String {
     const count = get_line_count(str);
-    var array : [count]String = undefined;
+    var array: [count]String = undefined;
 
-    var i : usize = 0;
+    var i: usize = 0;
     var seq = std.mem.splitSequence(u8, str, "\n");
-    while(i < count) : (i += 1) {
+    while (i < count) : (i += 1) {
         const nstr = seq.next().?;
         var nseq = std.mem.splitSequence(u8, nstr, " ");
 
@@ -41,7 +38,7 @@ fn get_tuple_len(comptime args: anytype) usize {
     return @typeInfo(@TypeOf(args)).Struct.fields.len;
 }
 
-/// Grab the argument after an equal sign 
+/// Grab the argument after an equal sign
 fn get_seq_str(arg: []const u8) []const u8 {
     var seq = std.mem.splitSequence(u8, arg, "=");
     _ = seq.next().?;
@@ -54,15 +51,15 @@ fn comptime_args(comptime args: anytype) [get_tuple_len(args)]Subroutine {
     const ArgsType = @TypeOf(args);
     const args_type_info = @typeInfo(ArgsType);
 
-    if(args_type_info != .Struct) 
+    if (args_type_info != .Struct)
         @compileError("Expected struct or tuple");
 
     const fields_info = args_type_info.Struct.fields;
-    var subroutines : [fields_info.len]Subroutine = undefined;
-    var i : usize = 0;
+    var subroutines: [fields_info.len]Subroutine = undefined;
+    var i: usize = 0;
 
     // Grab each field as a new subroutine
-    while(i < fields_info.len) : (i += 1) {
+    while (i < fields_info.len) : (i += 1) {
         subroutines[i] = @field(args, fields_info[i].name);
     }
 
@@ -74,24 +71,24 @@ fn comptime_args(comptime args: anytype) [get_tuple_len(args)]Subroutine {
 fn strip_decoration(comptime str: []const u8) []const u8 {
     var copy = str;
 
-    for(str, 0..) |c, i| {
-        if(c == '=') {
+    for (str, 0..) |c, i| {
+        if (c == '=') {
             copy = str[0..i];
             break;
         }
     }
 
-    if(copy[0] == '[')
-        copy = copy[1..copy.len - 1];
-    
+    if (copy[0] == '[')
+        copy = copy[1 .. copy.len - 1];
+
     return copy;
 }
 
 /// Strip all decorations from a list of strings
 fn strip_all(comptime str: []const String) []const String {
-    var copy : [str.len]String = undefined;
+    var copy: [str.len]String = undefined;
 
-    inline for(str, 0..) |v, i| {
+    inline for (str, 0..) |v, i| {
         copy[i] = comptime strip_decoration(v);
     }
 
@@ -104,21 +101,21 @@ fn get_type(comptime help_string: []const u8) type {
     var fields: [names.len]builtin.Type.StructField = undefined;
 
     // Turn each string into a field
-    for(names, 0..) |str, v| {
-        var opt : bool = false;
-        var boolean : bool = false;
-        var string : bool = false;
+    for (names, 0..) |str, v| {
+        var opt: bool = false;
+        var boolean: bool = false;
+        var string: bool = false;
 
-        if(str[0] == '[') // It's an optional!
+        if (str[0] == '[') // It's an optional!
             opt = true;
-        
-        var name : []const u8 = undefined;
 
-        var i : usize = 0;
-        while(i < str.len) : (i += 1) {
-            if(opt and str[i] == ']') { 
+        var name: []const u8 = undefined;
+
+        var i: usize = 0;
+        while (i < str.len) : (i += 1) {
+            if (opt and str[i] == ']') {
                 name = str[1..i];
-                break; 
+                break;
             } else if (str[i] == '=') {
                 name = str[0..i];
                 string = true;
@@ -126,30 +123,29 @@ fn get_type(comptime help_string: []const u8) type {
             }
         }
 
-        if(i == str.len) {
+        if (i == str.len) {
             name = str;
             boolean = true;
         } else {
             i += 1;
-            if(i < str.len and str[i] == '=') {
+            if (i < str.len and str[i] == '=') {
                 string = true;
             }
         }
-            
-        const default_value = if (!opt) 
-                if (boolean and !string) 
-                    @as(bool, false) 
-                else 
-                    @as([]const u8, "") 
-             else 
-                if (boolean and !string) 
-                    @as(?bool, null)
-                else 
-                    @as(?[]const u8, null);
 
-        var term_name : [name.len:0]u8 = [_:0]u8{0} ** (name.len);
+        const default_value = if (!opt)
+            if (boolean and !string)
+                @as(bool, false)
+            else
+                @as([]const u8, "")
+        else if (boolean and !string)
+            @as(?bool, null)
+        else
+            @as(?[]const u8, null);
 
-        for(name, 0..) |c, j| {
+        var term_name: [name.len:0]u8 = [_:0]u8{0} ** (name.len);
+
+        for (name, 0..) |c, j| {
             term_name[j] = c;
         }
 
@@ -162,14 +158,12 @@ fn get_type(comptime help_string: []const u8) type {
         };
     }
 
-    return @Type(.{
-        .Struct = .{
-            .layout = .Auto,
-            .fields = fields[0..],
-            .decls = &.{},
-            .is_tuple = false,
-        }
-    });
+    return @Type(.{ .Struct = .{
+        .layout = .Auto,
+        .fields = fields[0..],
+        .decls = &.{},
+        .is_tuple = false,
+    } });
 }
 
 /// Parses args for a command (or subroutine) into a struct
@@ -185,14 +179,14 @@ pub fn parse_args(comptime help_string: []const u8, arg_it: anytype) !get_type(h
     const ArgsType = @TypeOf(value);
     const args_type_info = @typeInfo(ArgsType);
 
-    if(args_type_info != .Struct) 
+    if (args_type_info != .Struct)
         @compileError("Expected struct or tuple");
 
     var curr_arg = arg_it.next();
     while (curr_arg != null) : (curr_arg = arg_it.next()) {
-        var found : bool = false;
-        inline for(names) |field_name| {
-            if(std.mem.containsAtLeast(u8, curr_arg.?, 1, field_name)) {
+        var found: bool = false;
+        inline for (names) |field_name| {
+            if (std.mem.containsAtLeast(u8, curr_arg.?, 1, field_name)) {
                 found = true;
                 // Switch over the type of the field
                 switch (@TypeOf(@field(value, field_name))) {
@@ -202,12 +196,12 @@ pub fn parse_args(comptime help_string: []const u8, arg_it: anytype) !get_type(h
                     []const u8, ?[]const u8 => {
                         @field(value, field_name) = get_seq_str(curr_arg.?); // Using @field() = x does proper assignment
                     },
-                    else => @compileError("Invalid Type!")
+                    else => @compileError("Invalid Type!"),
                 }
             }
         }
 
-        if(!found) {
+        if (!found) {
             std.debug.print("Error: Unknown argument {s}\n", .{curr_arg.?});
             std.debug.print("{s}", .{help_string});
             return error.UnknownArgument;
@@ -217,16 +211,16 @@ pub fn parse_args(comptime help_string: []const u8, arg_it: anytype) !get_type(h
     const fields_info = args_type_info.Struct.fields;
     inline for (fields_info) |fi| {
         const field = @field(value, fi.name);
-        switch(@TypeOf(field)) {
+        switch (@TypeOf(field)) {
             []const u8 => {
-                if(field.len == 0) {
+                if (field.len == 0) {
                     std.debug.print("{s}", .{help_string});
                     return error.UnfulfilledArgument;
                 }
             },
-            else => {}
+            else => {},
         }
-    } 
+    }
 
     return value;
 }
@@ -247,25 +241,25 @@ pub fn parse_subroutines(allocator: std.mem.Allocator, comptime help_string: []c
     const sub_cmd = arg_it.next();
 
     // If there is no subcommand quit
-    if(sub_cmd == null) {
+    if (sub_cmd == null) {
         std.debug.print("{s}", .{help_string});
         return;
     }
 
     // Check if we hit any of the matches
-    var ran : bool = false;
+    var ran: bool = false;
 
     const subroutines = comptime comptime_args(args);
 
     // Generate the map
-    const map = SubroutineMap {
+    const map = SubroutineMap{
         .cmd_names = &comptime get_names(help_string),
         .subroutines = &subroutines,
     };
 
     // Match all
-    inline for(map.cmd_names, map.subroutines) |cmd, sub| {
-        if(std.mem.eql(u8, cmd, sub_cmd.?)) {
+    inline for (map.cmd_names, map.subroutines) |cmd, sub| {
+        if (std.mem.eql(u8, cmd, sub_cmd.?)) {
             ran = true;
             // Found: execute
             try sub(&arg_it);
@@ -273,7 +267,7 @@ pub fn parse_subroutines(allocator: std.mem.Allocator, comptime help_string: []c
     }
 
     // If no match, we return
-    if(!ran) {
+    if (!ran) {
         std.debug.print("{s}", .{help_string});
         return;
     }

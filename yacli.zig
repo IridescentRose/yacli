@@ -147,8 +147,14 @@ fn get_type(comptime help_string: []const u8) type {
                 else 
                     @as(?[]const u8, null);
 
+        var term_name : [name.len:0]u8 = [_:0]u8{0} ** (name.len);
+
+        for(name, 0..) |c, j| {
+            term_name[j] = c;
+        }
+
         fields[v] = .{
-            .name = name,
+            .name = &term_name,
             .type = @TypeOf(default_value),
             .default_value = @ptrCast(&default_value),
             .is_comptime = false,
@@ -238,7 +244,7 @@ pub fn parse_subroutines(allocator: std.mem.Allocator, comptime help_string: []c
     _ = arg_it.skip();
 
     // Sub command argument
-    var sub_cmd = arg_it.next();
+    const sub_cmd = arg_it.next();
 
     // If there is no subcommand quit
     if(sub_cmd == null) {

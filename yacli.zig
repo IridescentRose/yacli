@@ -159,7 +159,7 @@ fn get_type(comptime help_string: []const u8) type {
     }
 
     return @Type(.{ .Struct = .{
-        .layout = .Auto,
+        .layout = .auto,
         .fields = fields[0..],
         .decls = &.{},
         .is_tuple = false,
@@ -169,7 +169,7 @@ fn get_type(comptime help_string: []const u8) type {
 /// Parses args for a command (or subroutine) into a struct
 /// `help_string` is the expected format string
 /// `arg_it` is the argument iterator
-pub fn parse_args(comptime help_string: []const u8, arg_it: anytype) !get_type(help_string) {
+pub fn parse_args(comptime help_string: []const u8, arg_it: *std.process.ArgIterator) !get_type(help_string) {
     const T = comptime get_type(help_string);
     const name_raw = comptime get_names(help_string);
     const names = comptime strip_all(name_raw[0..]);
